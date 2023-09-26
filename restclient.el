@@ -27,6 +27,14 @@
       (require 'cl)
     (require 'cl-lib)))
 
+;; use json-ts-mode if possible
+(defconst restclient-json-mode-sym
+  (if (and (fboundp 'treesit-available-p)
+           (treesit-available-p)
+           (treesit-language-available-p 'json))
+      #'json-ts-mode
+    #'js-mode))
+
 (defgroup restclient nil
   "An interactive HTTP client for Emacs."
   :group 'tools)
@@ -64,10 +72,10 @@
   :group 'restclient
   :type 'boolean)
 
-(defcustom restclient-content-type-modes '(("text/xml" . xml-mode)
+(defcustom restclient-content-type-modes `(("text/xml" . xml-mode)
                                            ("text/plain" . text-mode)
                                            ("application/xml" . xml-mode)
-                                           ("application/json" . js-mode)
+                                           ("application/json" . ,restclient-json-mode-sym)
                                            ("image/png" . image-mode)
                                            ("image/jpeg" . image-mode)
                                            ("image/jpg" . image-mode)
@@ -295,10 +303,10 @@
         (setq guessed-mode
               (or (assoc-default nil
                                  ;; magic mode matches
-                                 '(("<\\?xml " . xml-mode)
-                                   ("{\\s-*\"" . js-mode))
+                                 `(("<\\?xml " . xml-mode)
+                                   ("{\\s-*\"" . ,restclient-json-mode-sym))
                                  (lambda (re _dummy)
-                                   (looking-at re))) 'js-mode)))
+                                   (looking-at re))) restclient-json-mode-sym)))
       (let ((headers (buffer-substring-no-properties start end-of-headers)))
         (when guessed-mode
           (delete-region start (point))
@@ -338,7 +346,7 @@
               (fundamental-mode)
               (insert-image (create-image img nil t))))
 
-           ((eq guessed-mode 'js-mode)
+           ((eq guessed-mode restclient-json-mode-sym)
             (let ((json-special-chars (remq (assoc ?/ json-special-chars) json-special-chars))
 		  ;; Emacs 27 json.el uses `replace-buffer-contents' for
 		  ;; pretty-printing which is great because it keeps point and
