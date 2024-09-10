@@ -230,8 +230,7 @@ indirectly."
 ;; and password.
 (define-advice url-http-handle-authentication
     (:around (fn &rest args) restclient-fix)
-  (if (not restclient-within-call)
-      (apply fn args)
+  (unless restclient-within-call
     (apply fn args)
     t))
 
