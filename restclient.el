@@ -109,7 +109,10 @@
 
 (defface restclient-variable-usage-face
   '((t (:inherit restclient-variable-name-face)))
-  "Face for variable usage (only used when headers/body is represented as a single variable, not highlighted when variable appears in the middle of other text)."
+  "Face for variable usage.
+
+Used only when headers/body is represented as a single variable, not highlighted
+when variable appears in the middle of other text."
   :group 'restclient-faces)
 
 (defface restclient-method-face
@@ -179,7 +182,10 @@
   "Hook run after data is loaded into response buffer.")
 
 (defcustom restclient-vars-max-passes 10
-  "Maximum number of recursive variable references. This is to prevent hanging if two variables reference each other directly or indirectly."
+  "Maximum number of recursive variable references.
+
+Used to prevent hanging if two variables reference each other directly or
+indirectly."
   :group 'restclient
   :type 'integer)
 
@@ -222,22 +228,21 @@
 ;; password should an API call encounter a permission-denied response.
 ;; This API is meant to be usable without constant asking for username
 ;; and password.
-(defadvice url-http-handle-authentication (around restclient-fix)
-  (if restclient-within-call
-      (setq ad-return-value t)
-    ad-do-it))
-(ad-activate 'url-http-handle-authentication)
+(define-advice url-http-handle-authentication
+    (:around (fn &rest args) restclient-fix)
+  (if (not restclient-within-call)
+      (apply fn args)
+    (apply fn args)
+    t))
 
-(defadvice url-cache-extract (around restclient-fix-2)
+(define-advice url-cache-extract (:around (fn &rest args) restclient-fix-2)
   (unless restclient-within-call
-    ad-do-it))
-(ad-activate 'url-cache-extract)
+    (apply fn args)))
 
-(defadvice url-http-user-agent-string (around restclient-fix-3)
-  (if restclient-within-call
-      (setq ad-return-value nil)
-    ad-do-it))
-(ad-activate 'url-http-user-agent-string)
+(define-advice url-http-user-agent-string
+    (:around (fn &rest args) restclient-fix-3)
+  (unless restclient-within-call
+    (apply fn args)))
 
 (defun restclient-http-do (method url headers entity &rest handle-args)
   "Send ENTITY and HEADERS to URL as a METHOD request."
@@ -387,7 +392,9 @@ The buffer contains the raw HTTP response sent by the server."
             (switch-to-buffer-other-window (current-buffer))))))))
 
 (defun restclient-decode-response (raw-http-response-buffer target-buffer-name same-name)
-  "Decode the HTTP response using the charset (encoding) specified in the Content-Type header. If no charset is specified, default to UTF-8."
+  "Decode the HTTP response using the charset from the Content-Type header.
+
+If no charset is specified, default to UTF-8."
   (let* ((charset-regexp "^Content-Type.*charset=\\([-A-Za-z0-9]+\\)")
          (image? (save-excursion
                    (search-forward-regexp "^Content-Type.*[Ii]mage" nil t)))
@@ -429,15 +436,15 @@ The buffer contains the raw HTTP response sent by the server."
     (beginning-of-line)
     (if (looking-at restclient-comment-start-regexp)
         (if (re-search-forward restclient-comment-not-regexp (point-max) t)
-            (point-at-bol) (point-max))
+            (line-beginning-position) (point-max))
       (if (re-search-backward restclient-comment-start-regexp (point-min) t)
-          (point-at-bol 2)
+          (line-beginning-position 2)
         (point-min)))))
 
 (defun restclient-current-max ()
   (save-excursion
     (if (re-search-forward restclient-comment-start-regexp (point-max) t)
-        (max (- (point-at-bol) 1) 1)
+        (max (- (line-beginning-position) 1) 1)
       (progn (goto-char (point-max))
              (if (looking-at "^$") (- (point) 1) (point))))))
 
@@ -603,7 +610,7 @@ bound to C-c C-r."
       (message "curl command copied to clipboard."))))
 
 
-(defun restclient-elisp-result-function (args offset)
+(defun restclient-elisp-result-function (_args offset)
   (goto-char offset)
   (let ((form (macroexpand-all (read (current-buffer)))))
     (lambda ()
@@ -626,7 +633,9 @@ Optional argument STAY-IN-WINDOW do not move focus to response buffer if t."
 
 ;;;###autoload
 (defun restclient-http-send-current-raw ()
-  "Sends current request and get raw result (no reformatting or syntax highlight of XML, JSON or images)."
+  "Sends current request and get raw result.
+
+Done without reformatting or syntax highlight of XML, JSON or images."
   (interactive)
   (restclient-http-send-current t))
 
