@@ -1,4 +1,4 @@
-;;; restclient-helm.el --- helm interface for restclient.el
+;;; restclient-helm.el --- helm interface for restclient.el   -*- lexical-binding: t; -*-
 ;;
 ;; Public domain.
 
